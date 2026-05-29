@@ -3,29 +3,42 @@
 import { apiFetch } from "@/lib/backend/client";
 import type { PostCommentDto, PostWithContentDto } from "@/type/post";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-export default function Page({ params }: { params: Promise<{ id: number }> }) {
-  const { id } = use(params);
+export default function Page() {
   const router = useRouter();
 
+  const { id: idStr } = useParams<{ id: string }>();
+  const id = Number(idStr);
+  
   const [post, setPost] = useState<PostWithContentDto | null>(null);
-  const [postComments, setPostComments] = useState<PostCommentDto[] | null>([]);
+  const [postComments, setPostComments] = useState<PostCommentDto[] | null>(null);
 
   const deletePost = (id: number) => {
     apiFetch(`/api/v1/posts/${id}`, {
       method: "DELETE",
     }).then((data) => {
       alert(data.msg);
+
       router.replace("/posts");
     });
   };
 
-  useEffect(() => {
-    apiFetch(`/api/v1/posts/${id}`).then(setPost);
+  const deleteComment = (id: number, commentId: number) => {
+    apiFetch(`/api/v1/posts/${id}/comments/${commentId}`, {
+      method: "DELETE",
+    }).then((data) => {
+      alert(data.msg);
+    });
+  };
 
-    apiFetch(`/api/v1/posts/${id}/comments`).then(setPostComments);
+  useEffect(() => {
+    apiFetch(`/api/v1/posts/${id}`)
+      .then(setPost);
+
+    apiFetch(`/api/v1/posts/${id}/comments`)
+      .then(setPostComments);
   }, []);
 
   if (post == null) return <div>로딩중...</div>;
@@ -40,11 +53,8 @@ export default function Page({ params }: { params: Promise<{ id: number }> }) {
 
       <div className="flex gap-2">
         <button
-          className="p-2 rounded border"
-          onClick={() =>
-            confirm(`${post.id}번 글을 정말로 삭제하시겠습니까?`) &&
-            deletePost(post.id)
-          }
+          className="p-2 rounded border cursor-pointer"
+          onClick={() => confirm(`${post.id}번 글을 정말로 삭제하시겠습니까?`) && deletePost(post.id)}
         >
           삭제
         </button>
@@ -52,6 +62,8 @@ export default function Page({ params }: { params: Promise<{ id: number }> }) {
           수정
         </Link>
       </div>
+
+      <hr className="my-2" />
 
       <h2>댓글 목록</h2>
 
@@ -64,7 +76,18 @@ export default function Page({ params }: { params: Promise<{ id: number }> }) {
       {postComments != null && postComments.length > 0 && (
         <ul>
           {postComments.map((comment) => (
-            <li key={comment.id}>{comment.content}</li>
+            <li key={comment.id} className="py-2">
+              {comment.content}
+              <button
+                className="ml-2 p-2 rounded border"
+                onClick={() =>
+                  confirm(`${comment.id}번 댓글을 정말로 삭제하시겠습니까?`) &&
+                  deleteComment(id, comment.id)
+                }
+              >
+                삭제
+              </button>
+            </li>
           ))}
         </ul>
       )}
